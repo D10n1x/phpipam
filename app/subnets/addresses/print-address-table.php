@@ -59,7 +59,7 @@ foreach($Addresses->address_types as $t) {
 }
 
 # remove port, owner, device, note, mac etc if none is set to preserve space
-$cnt_obj = ["port"=>0, "switch"=>0, "owner"=>0, "note"=>0, "mac"=>0, "customer_id"];
+$cnt_obj = ["port"=>0, "switch"=>0, "owner"=>0, "note"=>0, "mac"=>0, "customer_id"=>0];
 foreach ($addresses as $a) {
 	if (strlen($a->port)>0)	{ $cnt_obj["port"]++; }
 	if ($a->switch>0)		{ $cnt_obj["switch"]++; }
@@ -72,9 +72,9 @@ foreach ($addresses as $a) {
 
 // check and remove empty
 foreach ($cnt_obj as $field=>$c) {
-	if ($c=="0")	{ unset($selected_ip_fields[array_search($field, $selected_ip_fields)]); }
+	if ($c==0 && in_array($field, $selected_ip_fields))	{ unset($selected_ip_fields[array_search($field, $selected_ip_fields)]);  }
 }
-
+$selected_ip_fields = array_values($selected_ip_fields);  //Clean up array index
 # remove custom fields if all are empty!
 foreach($custom_fields as $field) {
 	$sizeMyFields[$field['name']] = 0;				// default value
@@ -274,7 +274,7 @@ else {
                     // search for hostname records
 					$records = $PowerDNS->search_records ("name", $addresses[$n]->hostname, 'name', true);
 					$ptr	 = $PowerDNS->fetch_record ($addresses[$n]->PTR);
-					$ptr_name = $PowerDNS->get_ip_ptr_name(long2ip($addresses[$n]->ip_addr));
+					$ptr_name = $PowerDNS->get_ip_ptr_name($Tools->long2ip4($addresses[$n]->ip_addr));
 					if(! $ptr || $ptr_name != $ptr->name) {
 					        $ptr = $PowerDNS->search_records("name", $ptr_name);
 					        if($ptr) {
@@ -283,10 +283,10 @@ else {
 					        } else { $Addresses->ptr_link($addresses[$n]->id, 0); }
 					}
 					unset($dns_records);
-					if ($records !== false || $ptr!==false) {
+					if (is_array($records) || $ptr!==false) {
 						$dns_records[] = "<br>";
 						$dns_records[] = "<ul class='submenu-dns text-muted'>";
-						if($records!==false) {
+						if(is_array($records)) {
 							foreach ($records as $r) {
 								if($r->type!="SOA" && $r->type!="NS")
 								$dns_records[]   = "<li><i class='icon-gray fa fa-gray fa-angle-right'></i> <span class='badge badge1 badge2 editRecord' data-action='edit' data-id='$r->id' data-domain_id='$r->domain_id'>$r->type</span> $r->content </li>";
@@ -305,7 +305,7 @@ else {
 					// search for IP records
 					$records2 = $PowerDNS->search_records ("content", $addresses[$n]->ip, 'content', true);
 					unset($dns_records2);
-					if ($records2 !== false) {
+					if (is_array($records2)) {
                         $dns_cname_unique = array();        // unique CNAME records to prevent multiple
                         unset($cname);
 						$dns_records2[] = "<br>";
@@ -315,7 +315,7 @@ else {
 							$dns_records2[]   = "<li><i class='icon-gray fa fa-gray fa-angle-right'></i> <span class='badge badge1 badge2 editRecord' data-action='edit' data-id='$r->id' data-domain_id='$r->domain_id'>$r->type</span> $r->name </li>";
                             //search also for CNAME records
                             $dns_records_cname = $PowerDNS->seach_aliases ($r->name);
-                            if($dns_records_cname!==false) {
+                            if(is_array($dns_records_cname)) {
                                 foreach ($dns_records_cname as $cn) {
                                     if (!in_array($cn->name, $dns_cname_unique)) {
                                         $cname[] = "<li><i class='icon-gray fa fa-gray fa-angle-right'></i> <span class='badge badge1 badge2 editRecord' data-action='edit' data-id='$cn->id' data-domain_id='$cn->domain_id'>$cn->type</span> $cn->name </li>";

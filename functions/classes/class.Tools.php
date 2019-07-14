@@ -7,16 +7,6 @@
 class Tools extends Common_functions {
 
 	/**
-	 * settings
-	 *
-	 * (default value: null)
-	 *
-	 * @var object
-	 * @access public
-	 */
-	public $settings = null;
-
-	/**
 	 * (array) IP address types from Addresses object
 	 *
 	 * (default value: null)
@@ -34,22 +24,6 @@ class Tools extends Common_functions {
 	public $csv_delimiter = ",";
 
 	/**
-	 * PEAR NET IPv4 object
-	 *
-	 * @var mixed
-	 * @access protected
-	 */
-	protected $Net_IPv4;
-
-	/**
-	 * PEAR NET IPv6 object
-	 *
-	 * @var mixed
-	 * @access protected
-	 */
-	protected $Net_IPv6;
-
-	/**
 	 * Addresses object
 	 *
 	 * (default value: false)
@@ -60,32 +34,16 @@ class Tools extends Common_functions {
 	protected $Addresses = false;
 
 	/**
-	 * for Result printing
-	 *
-	 * @var object
-	 * @access public
+	 * Available phpIPAM releases
+	 * @var array
 	 */
-	public $Result;
+	public $phpipam_releases = [];
 
 	/**
-	 * debugging flag
-	 *
-	 * (default value: false)
-	 *
-	 * @var bool
-	 * @access protected
+	 * Latest phpIPAM release
+	 * @var mixed
 	 */
-	protected $debugging = false;
-
-	/**
-	 * Database connection
-	 *
-	 * @var object
-	 * @access protected
-	 */
-	protected $Database;
-
-
+	private $phpipam_latest_release;
 
 
 
@@ -95,12 +53,12 @@ class Tools extends Common_functions {
 	 * @access public
 	 */
 	public function __construct (Database_PDO $database) {
+		parent::__construct();
+
 		# set database object
 		$this->Database = $database;
 		# initialize Result
 		$this->Result = new Result ();
-		# set debugging
-		$this->set_debugging ();
 	}
 
 
@@ -260,11 +218,11 @@ class Tools extends Common_functions {
 	 */
 	private function search_subnets_range ($search_term, $high, $low, $custom_fields = array()) {
 		# reformat low/high
-		if($high==0 && $low==0)	{ $high = "1"; $low="1"; }
+		if($high==0 && $low==0)	{ $high = "1"; $low = "1"; }
 
 		# set search query
 		$query[] = "select * from `subnets` where `description` like :search_term ";
-		$query[] = "or `subnet` between :low and :high ";
+		$query[] = "or (`subnet` >= :low and `subnet` <= :high )";
 		# custom
 	    if(sizeof($custom_fields) > 0) {
 			foreach($custom_fields as $myField) {
@@ -316,7 +274,7 @@ class Tools extends Common_functions {
 					# parse address
 					$net = $this->Net_IPv4->parseAddress($this->transform_address($s['subnet']).'/'.$s['mask'], "dotted");
 
-					if($low>$this->transform_to_decimal(@$net->network) && $low<$this->transform_address($net->broadcast, "decimal")) {
+					if($low>=$this->transform_to_decimal(@$net->network) && $low<=$this->transform_address($net->broadcast, "decimal")) {
 						$ids[] = $s['id'];
 					}
 				}
@@ -1037,7 +995,7 @@ class Tools extends Common_functions {
 	 * @return array|null
 	 */
 	public function requests_fetch_available_subnets () {
-		try { $subnets = $this->Database->getObjectsQuery("SELECT * FROM `subnets` where `allowRequests`=1 and `isFull` != 1 ORDER BY `subnet`;"); }
+		try { $subnets = $this->Database->getObjectsQuery("SELECT * FROM `subnets` where `allowRequests`=1 and COALESCE(`isFull`,0) != 1 ORDER BY `subnet`;"); }
 		catch (Exception $e) { $this->Result->show("danger", $e->getMessage(), false);	return false; }
 
 		# save
@@ -1691,19 +1649,17 @@ class Tools extends Common_functions {
 		# fetch settings
 		$this->get_settings ();
 		# check for release
-    	# try to fetch
-    	$release_gh = @file('https://github.com/phpipam/phpipam/releases.atom');
-    	# check
-    	if ($release_gh===false) {
-        	if($print_error) {
-            	$this->Result->show("danger", "Cannot fetch https://github.com/phpipam/phpipam/releases.atom", false);
-            }
-        	return false;
-    	}
+		# try to fetch
+		$curl = $this->curl_fetch_url('https://github.com/phpipam/phpipam/releases.atom');
+		# check
+		if ($curl['result']===false) {
+			if($print_error) {
+				$this->Result->show("danger", "Cannot fetch https://github.com/phpipam/phpipam/releases.atom : ".$curl['error_msg'], false);
+			}
+			return false;
+		}
 		# set releases href
-		$feed = implode($release_gh);
-		// fetch
-		$xml = simplexml_load_string($feed);
+		$xml = simplexml_load_string($curl['result']);
 
 		// if ok
 		if ($xml!==false) {
@@ -2199,8 +2155,8 @@ class Tools extends Common_functions {
 
         // append ports
         if(($n->type=="static" || $n->type=="destination") && (strlen($n->src_port)>0 && strlen($n->dst_port)>0)) {
-            $sources      = implode("<br>", $sources)." /".$n->src_port;
-            $destinations = implode("<br>", $destinations)." /".$n->dst_port;
+            $sources      = implode("<br>", $sources)." :".$n->src_port;
+            $destinations = implode("<br>", $destinations)." :".$n->dst_port;
         }
         else {
             $sources      = implode("<br>", $sources);
@@ -2855,20 +2811,11 @@ class Tools extends Common_functions {
 	 * @return mixed
 	 */
 	public function explode_filtered($delimiter, $string) {
-		$ret = explode($delimiter, $string);
-		if (!is_array($ret))
-			return false;
-		return array_filter($ret);
+	    $ret = explode($delimiter, $string);
+	    if (!is_array($ret))
+	        return false;
+	    return array_filter($ret);
 	}
-
-
-
-
-
-
-
-
-
 
 
 	/**
@@ -3237,6 +3184,36 @@ class Tools extends Common_functions {
 		return $out;
 	}
 
+
+	/**
+	 * Fetch all routing subnets
+	 *
+	 * @method fetch_routing_subnets
+	 * @param  string $type [bgp,ospf]
+	 * @param  int $id (default: 0)
+	 * @param  bool $cnt (default: true)
+	 * @return false|array
+	 */
+	public function fetch_routing_subnets ($type="bgp", $id = 0, $cnt = false) {
+		// set type
+		$type = $type=="bgp" ? "bgp" : "ospf";
+		// set count
+		$fields = $cnt ? "count(*) as cnt" : "*,s.id as subnet_id";
+		// set query
+		$query = "select $fields from subnets as s, routing_subnets as r
+					where r.type = ? and r.object_id = ? and r.subnet_id = s.id
+					order by r.direction asc, s.subnet asc;";
+		// fetch
+		try { $subnets = $this->Database->getObjectsQuery($query, [$type, $id]); }
+		catch (Exception $e) {
+			$this->Result->show("danger", $e->getMessage(), true);
+		}
+		// return
+		return sizeof($subnets)>0 ? $subnets : false;
+	}
+
+
+
 	/**
 	 * Return all possible customer object relations
 	 *
@@ -3250,7 +3227,8 @@ class Tools extends Common_functions {
 				"vlans"       => "VLAN",
 				"vrf"         => "VRF",
 				"circuits"    => "Circuits",
-				"racks"       => "Racks"
+				"racks"       => "Racks",
+				"routing_bgp" => "BGP Routing"
 				];
 	}
 
@@ -3284,7 +3262,7 @@ class Tools extends Common_functions {
 	 */
 	public function parse_import_file ($filetype = "xls", $subnet = object, $custom_address_fields) {
     	# start object and get settings
-    	$this->settings ();
+    	$this->get_settings ();
     	$this->Subnets = new Subnets ($this->Database);
 
         # CSV

@@ -18,11 +18,29 @@ class phpipam_rack extends Tools {
     public $rack_sizes = array();
 
     /**
+     * Current rack size
+     * @var integer
+     */
+    public $rack_size = 0;
+
+    /**
+     * Current rack orientation
+     * @var integer
+     */
+    public $rack_orientation = 0;
+
+    /**
+     * Current rack name
+     * @var string
+     */
+    public $rack_name = "";
+
+    /**
      * List of all racks
      *
      * (default value: false)
      *
-     * @var bool
+     * @var object|bool
      * @access public
      */
     public $all_racks = false;
@@ -36,30 +54,6 @@ class phpipam_rack extends Tools {
      * @access private
      */
     private $rack_content = array();
-
-	/**
-	 * Result printing class
-	 *
-	 * @var mixed
-	 * @access public
-	 */
-	public $Result;
-
-	/**
-	 * Database class
-	 *
-	 * @var mixed
-	 * @access protected
-	 */
-	protected $Database;
-
-	/**
-	 * Logging class
-	 *
-	 * @var mixed
-	 * @access public
-	 */
-	public $Log;
 
     /**
      * Rack
@@ -476,10 +470,15 @@ class RackDrawer extends Common_functions {
             imagecopy($this->template, $unit, 0, $y, 0, 0, $this->rackXSize, $this->unitYSize);
             $text = ($this->rack->getOrientation()) ? $i + 1 : $this->rack->getSpace() - $i;
             $textBox = imagettfbbox(12, 0, dirname(__FILE__)."/../../css/fonts/MesloLGS-Regular.ttf", $text);
+
+            // disable transparency for U labels
+            imagealphablending($this->template, true);
             imagettftext($this->template, 12, 0,
                 $this->rackInsideXOffset - 4 - abs($textBox[2] - $textBox[0]),
                 $y + abs($textBox[1] - $textBox[7]) + round(($this->unitYSize - ($textBox[1] - $textBox[7])) / 2),
                 $textColor, dirname(__FILE__)."/../../css/fonts/MesloLGS-Regular.ttf", $text);
+            imagealphablending($this->template, false);
+
             $y += $this->unitYSize;
         }
         imagecopy($this->template, $bottom, 0, $y, 0, 0, $this->rackXSize, $this->bottomYSize);

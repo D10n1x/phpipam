@@ -3,7 +3,6 @@ ob_start();
 
 /* config */
 if (!file_exists("config.php"))	{ die("<br><hr>-- config.php file missing! Please copy default config file `config.dist.php` to `config.php` and set configuration! --<hr><br>phpipam installation documentation: <a href='http://phpipam.net/documents/installation/'>http://phpipam.net/documents/installation/</a>"); }
-else 							{ require('config.php'); }
 
 /* site functions */
 require_once( 'functions/functions.php' );
@@ -20,7 +19,7 @@ else {
 	# if not install fetch settings etc
 	if($_GET['page']!="install" ) {
 		# database object
-		if (!is_object($Database)) $Database = new Database_PDO;
+		$Database = new Database_PDO;
 
 		# check if this is a new installation
 		require('functions/checks/check_db_install.php');
@@ -97,7 +96,6 @@ else {
 		<link rel="stylesheet" type="text/css" href="css/font-awesome/font-awesome.min.css?v=<?php print SCRIPT_PREFIX; ?>">
 		<link rel="stylesheet" type="text/css" href="css/bootstrap/bootstrap-switch.min.css?v=<?php print SCRIPT_PREFIX; ?>">
 		<link rel="stylesheet" type="text/css" href="css/bootstrap-table/bootstrap-table.min.css?v=<?php print SCRIPT_PREFIX; ?>">
-		<!-- <link rel="stylesheet" type="text/css" href="css/bootstrap/bootstrap-custom.min.css?v=<?php print SCRIPT_PREFIX; ?>"> -->
 		<link rel="stylesheet" type="text/css" href="css/bootstrap/bootstrap-custom.css?v=<?php print SCRIPT_PREFIX; ?>">
 		<?php if ($User->user->ui_theme!="white") { ?>
 		<link rel="stylesheet" type="text/css" href="css/bootstrap/bootstrap-custom-<?php print $User->user->ui_theme; ?>.css?v=<?php print SCRIPT_PREFIX; ?>">
@@ -113,7 +111,6 @@ else {
 		<?php if($_GET['page']=="login" || $_GET['page']=="request_ip") { ?>
 		<script type="text/javascript" src="js/login.js?v=<?php print SCRIPT_PREFIX; ?>"></script>
 		<?php } ?>
-		<!-- <script type="text/javascript" src="js/magic.min.js?v=<?php print SCRIPT_PREFIX; ?>"></script> -->
 		<script type="text/javascript" src="js/magic.js?v=<?php print SCRIPT_PREFIX; ?>"></script>
 		<script type="text/javascript" src="js/bootstrap.min.js?v=<?php print SCRIPT_PREFIX; ?>"></script>
 		<script type="text/javascript" src="js/bootstrap-switch.min.js?v=<?php print SCRIPT_PREFIX; ?>"></script>
@@ -125,8 +122,8 @@ else {
 		<!--[if lt IE 9]>
 		<script type="text/javascript" src="js/dieIE.js"></script>
 		<![endif]-->
-		<?php if ($User->settings->enableLocations=="1" && isset($gmaps_api_key) && strlen($gmaps_api_key)>0) { ?>
-		<script type="text/javascript" src="https://maps.google.com/maps/api/js<?php print "?key=".$gmaps_api_key; ?>"></script>
+		<?php if ($User->settings->enableLocations=="1" && strlen(Config::get('gmaps_api_key'))>0) { ?>
+		<script type="text/javascript" src="https://maps.google.com/maps/api/js<?php print "?key=".Config::get('gmaps_api_key'); ?>"></script>
 		<script type="text/javascript" src="js/gmaps.js?v=<?php print SCRIPT_PREFIX; ?>"></script>
 		<?php }	?>
 		<!-- jQuery UI -->

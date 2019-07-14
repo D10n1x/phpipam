@@ -44,14 +44,6 @@ class Admin extends Common_functions {
 	private $admin_required = true;
 
 	/**
-	 * Result
-	 *
-	 * @var mixed
-	 * @access public
-	 */
-	public $Result;
-
-	/**
 	 * User
 	 *
 	 * @var mixed
@@ -59,31 +51,7 @@ class Admin extends Common_functions {
 	 */
 	protected $User;
 
-	/**
-	 * Database
-	 *
-	 * @var mixed
-	 * @access protected
-	 */
-	protected $Database;
 
-	/**
-	 * debugging flag
-	 *
-	 * (default value: false)
-	 *
-	 * @var bool
-	 * @access protected
-	 */
-	protected $debugging = false;
-
-	/**
-	 * Log
-	 *
-	 * @var mixed
-	 * @access public
-	 */
-	public $Log;
 
 
 
@@ -96,12 +64,12 @@ class Admin extends Common_functions {
 	 * @param bool $admin_required (default: true)
 	 */
 	public function __construct (Database_PDO $database, $admin_required = true) {
+		parent::__construct();
+
 		# initialize database object
 		$this->Database = $database;
 		# initialize Result
 		$this->Result = new Result ();
-		# set debugging
-		$this->set_debugging ();
 		# set admin flag
 		$this->set_admin_required ($admin_required);
 		# verify that user is admin
@@ -181,6 +149,7 @@ class Admin extends Common_functions {
 	 * @return void
 	 */
 	public function object_modify ($table, $action=null, $field="id", $values = [], $values_log = []) {
+		if (!is_string($table) || strlen($table) == 0) return false;
 		# strip tags
 		$values     = $this->strip_input_tags ($values);
 		$values_log = $this->strip_input_tags ($values_log);
@@ -700,7 +669,7 @@ class Admin extends Common_functions {
 
 	    # set update query
 	    if($field['action']=="delete") 								{ $query  = "ALTER TABLE `$field[table]` DROP `$field[oldname]`;"; }
-	    else if ($field['action']=="edit"&&@$field['NULL']=="NO") 	{ $query  = "ALTER IGNORE TABLE `$field[table]` CHANGE COLUMN `$field[oldname]` `$field[name]` $field[ftype] $charset DEFAULT :default NOT NULL COMMENT :comment;"; }
+	    else if ($field['action']=="edit"&&@$field['NULL']=="NO") 	{ $query  = "ALTER TABLE `$field[table]` CHANGE COLUMN `$field[oldname]` `$field[name]` $field[ftype] $charset DEFAULT :default NOT NULL COMMENT :comment;"; }
 	    else if ($field['action']=="edit") 							{ $query  = "ALTER TABLE `$field[table]` CHANGE COLUMN `$field[oldname]` `$field[name]` $field[ftype] $charset DEFAULT :default COMMENT :comment;"; }
 	    else if ($field['action']=="add"&&@$field['NULL']=="NO") 	{ $query  = "ALTER TABLE `$field[table]` ADD COLUMN 	`$field[name]` 					$field[ftype] $charset DEFAULT :default NOT NULL COMMENT :comment;"; }
 	    else if ($field['action']=="add")							{ $query  = "ALTER TABLE `$field[table]` ADD COLUMN 	`$field[name]` 					$field[ftype] $charset DEFAULT :default NULL COMMENT :comment;"; }
